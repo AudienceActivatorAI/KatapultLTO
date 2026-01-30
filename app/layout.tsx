@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { CartProvider } from "@/contexts/CartContext";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -17,10 +16,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
-        <CartProvider>
-          {children}
-          <Toaster position="top-right" />
-        </CartProvider>
+        {children}
+        <Toaster position="top-right" />
       </body>
     </html>
   );

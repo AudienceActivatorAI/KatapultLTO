@@ -1,9 +1,12 @@
-import type { CartItem } from "@/types";
+import type { CartItem as CartItemType } from "@/types";
+
+// Re-export CartItem for backwards compatibility
+export type CartItem = CartItemType;
 
 const CART_STORAGE_KEY = "katapult_cart";
 
 class CartService {
-  async getCart(): Promise<CartItem[]> {
+  async getCart(): Promise<CartItemType[]> {
     try {
       if (typeof window === "undefined") return [];
       const stored = localStorage.getItem(CART_STORAGE_KEY);
@@ -14,7 +17,7 @@ class CartService {
     }
   }
 
-  private saveCart(items: CartItem[]): void {
+  private saveCart(items: CartItemType[]): void {
     try {
       if (typeof window === "undefined") return;
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
@@ -23,7 +26,7 @@ class CartService {
     }
   }
 
-  async addItem(product: Omit<CartItem, "quantity">): Promise<void> {
+  async addItem(product: Omit<CartItemType, "quantity">): Promise<void> {
     const items = await this.getCart();
     const existingIndex = items.findIndex((item) => item.id === product.id);
 

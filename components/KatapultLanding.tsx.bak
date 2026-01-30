@@ -292,7 +292,340 @@ export default function KatapultLanding() {
   const interceptBuyDetailsButtons = useCallback(() => {
     console.log('[Katapult] Not intercepting buttons - letting Autosync work naturally');
     return; // Exit early - don't intercept
-  }, []);
+    // @ts-ignore - Unreachable code kept for reference only
+    const container = document.getElementById(AUTOSYNC_CONTAINER_ID);
+    if (!container) {
+      console.log('[Katapult] Container not found for button interception');
+      return;
+    }
+    
+    console.log('[Katapult] Setting up button interception');
+    
+    // Also check for iframes - Autosync might render in an iframe
+    const containerIframes = container.querySelectorAll('iframe');
+    const docIframes = document.querySelectorAll('iframe');
+    console.log(`[Katapult] Found ${containerIframes.length} iframes in container, ${docIframes.length} total iframes`);
+    
+    // Function to search iframe content for buttons
+    const searchIframeButtons = () => {
+      docIframes.forEach((iframe: any, index: number) => {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc && iframeDoc.body) {
+            const iframeButtons = iframeDoc.querySelectorAll('button, a[role="button"], [onclick], [class*="button"], [class*="btn"]');
+            console.log(`[Katapult] Iframe ${index} has ${iframeButtons.length} buttons`);
+            
+            // Log first few buttons from iframe for debugging
+            iframeButtons.forEach((btn: any, btnIndex: number) => {
+              if (btnIndex < 3) {
+                const text = (btn.textContent || btn.innerText || '').toUpperCase().trim();
+                console.log(`[Katapult] Iframe button ${btnIndex}: text="${text.substring(0, 50)}"`);
+              }
+            });
+            
+            // Search for BUY/DETAILS buttons in iframe
+            let buyCount = 0;
+            let detailsCount = 0;
+            
+            iframeButtons.forEach((btn: any) => {
+              const text = (btn.textContent || btn.innerText || '').toUpperCase().trim();
+              const ariaLabel = (btn.getAttribute('aria-label') || '').toUpperCase();
+              const className = (btn.className || '').toUpperCase();
+              const id = (btn.id || '').toUpperCase();
+              
+              if ((text === 'BUY' || text.includes('BUY') || ariaLabel.includes('BUY') || className.includes('BUY') || id.includes('BUY')) && !btn.dataset.katapultHandled) {
+                btn.dataset.katapultHandled = 'true';
+                buyCount++;
+                console.log(`[Katapult] ✓ Found BUY button #${buyCount} in iframe:`, { text, ariaLabel, className, id });
+                
+                // Intercept BUY button to prevent Autosync's quote form and use our checkout
+                btn.addEventListener('click', (e: MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+                  console.log('[Katapult] BUY button clicked in iframe');
+                  handleBuyClick(e);
+                  return false;
+                }, true); // Use capture phase to intercept before Autosync
+              }
+              
+              if ((text === 'DETAILS' || text.includes('DETAILS') || ariaLabel.includes('DETAILS') || ariaLabel.includes('DETAIL') || className.includes('DETAILS') || className.includes('DETAIL') || id.includes('DETAILS') || id.includes('DETAIL')) && !btn.dataset.katapultHandled) {
+                btn.dataset.katapultHandled = 'true';
+                detailsCount++;
+                console.log(`[Katapult] ✓ Found DETAILS button #${detailsCount} in iframe:`, { text, ariaLabel, className, id });
+                
+                btn.addEventListener('click', (e: MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+                  console.log('[Katapult] DETAILS button clicked in iframe');
+                  handleDetailsClick(e);
+                  return false;
+                }, true);
+              }
+            });
+            
+            if (buyCount > 0 || detailsCount > 0) {
+              console.log(`[Katapult] ✓ Attached handlers in iframe: ${buyCount} BUY, ${detailsCount} DETAILS`);
+            }
+            
+            // Set up mutation observer for iframe to catch dynamically added buttons
+            if (!iframe.dataset.katapultObserved) {
+              iframe.dataset.katapultObserved = 'true';
+              const iframeObserver = new MutationObserver(() => {
+                searchIframeButtons();
+              });
+              
+              // Wait for body to be ready
+              if (iframeDoc.body) {
+                iframeObserver.observe(iframeDoc.body, {
+                  childList: true,
+                  subtree: true,
+                });
+              } else {
+                // Wait for body to load
+                iframeDoc.addEventListener('DOMContentLoaded', () => {
+                  if (iframeDoc.body) {
+                    iframeObserver.observe(iframeDoc.body, {
+                      childList: true,
+                      subtree: true,
+                    });
+                  }
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.log(`[Katapult] Cannot access iframe ${index} content:`, e);
+        }
+      });
+    };
+    
+    // Try to access iframe content immediately and periodically
+    searchIframeButtons();
+    setTimeout(searchIframeButtons, 500);
+    setTimeout(searchIframeButtons, 1000);
+    setTimeout(searchIframeButtons, 2000);
+    setTimeout(searchIframeButtons, 3000);
+    setTimeout(searchIframeButtons, 5000);
+    setTimeout(searchIframeButtons, 7000);
+    setTimeout(searchIframeButtons, 10000);
+    
+    // Also try when iframe loads
+    docIframes.forEach((iframe: any) => {
+      iframe.addEventListener('load', () => {
+        console.log('[Katapult] Iframe loaded event fired, searching for buttons...');
+        setTimeout(searchIframeButtons, 100);
+        setTimeout(searchIframeButtons, 500);
+        setTimeout(searchIframeButtons, 1000);
+      });
+    });
+    
+    // Check if Autosync creates a shadow DOM or nested structure
+    const allElements = container.querySelectorAll('*');
+    console.log(`[Katapult] Container has ${allElements.length} total elements`);
+
+    // Function to attach handlers to buttons
+    const attachHandlers = () => {
+      // Search in multiple places:
+      // 1. Inside the container
+      // 2. In the entire document (Autosync might render outside the container)
+      // 3. In any iframes
+      
+      let allButtons: NodeListOf<Element> = container.querySelectorAll('button, a[role="button"], [onclick], [class*="button"], [class*="btn"], [id*="buy"], [id*="detail"], [data-action], [aria-label]');
+      
+      // Also search document-wide for buttons that might be outside the container
+      const docButtons = document.querySelectorAll('button, a[role="button"], [onclick]');
+      console.log(`[Katapult] Found ${docButtons.length} buttons in entire document`);
+      
+      // Combine results (avoid duplicates)
+      const buttonSet = new Set<Element>();
+      allButtons.forEach(btn => buttonSet.add(btn));
+      docButtons.forEach(btn => {
+        // Only add if it's not already in our container set
+        if (!container.contains(btn)) {
+          buttonSet.add(btn);
+        }
+      });
+      
+      allButtons = Array.from(buttonSet) as any;
+      let buyCount = 0;
+      let detailsCount = 0;
+      
+      console.log(`[Katapult] Scanning ${allButtons.length} potential buttons (container + document)...`);
+      
+      allButtons.forEach((btn: any, index: number) => {
+        const text = (btn.textContent || btn.innerText || '').toUpperCase().trim();
+        const ariaLabel = (btn.getAttribute('aria-label') || '').toUpperCase();
+        const className = (btn.className || '').toUpperCase();
+        const id = (btn.id || '').toUpperCase();
+        const dataAction = (btn.getAttribute('data-action') || '').toUpperCase();
+        
+        // Log first few buttons for debugging
+        if (index < 5) {
+          console.log(`[Katapult] Button ${index}: text="${text}", aria-label="${ariaLabel}", class="${className}", id="${id}"`);
+        }
+        
+        // Handle BUY buttons - check multiple conditions
+        const isBuyButton = (
+          text === 'BUY' || 
+          text.includes('BUY') ||
+          ariaLabel.includes('BUY') ||
+          className.includes('BUY') ||
+          id.includes('BUY') ||
+          dataAction.includes('BUY')
+        );
+        
+        if (isBuyButton && !btn.dataset.katapultHandled) {
+          btn.dataset.katapultHandled = 'true';
+          buyCount++;
+          console.log(`[Katapult] Found BUY button #${buyCount}:`, { text, ariaLabel, className, id });
+          
+          // Remove any existing click handlers first
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode?.replaceChild(newBtn, btn);
+          newBtn.dataset.katapultHandled = 'true';
+          
+          newBtn.addEventListener('click', (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('[Katapult] BUY button clicked via interceptor');
+            handleBuyClick(e);
+            return false;
+          }, true); // Use capture phase to intercept early
+        }
+        
+        // Handle DETAILS buttons - check multiple conditions
+        const isDetailsButton = (
+          text === 'DETAILS' || 
+          text.includes('DETAILS') ||
+          ariaLabel.includes('DETAILS') ||
+          ariaLabel.includes('DETAIL') ||
+          className.includes('DETAILS') ||
+          className.includes('DETAIL') ||
+          id.includes('DETAILS') ||
+          id.includes('DETAIL') ||
+          dataAction.includes('DETAILS') ||
+          dataAction.includes('DETAIL')
+        );
+        
+        if (isDetailsButton && !btn.dataset.katapultHandled) {
+          btn.dataset.katapultHandled = 'true';
+          detailsCount++;
+          console.log(`[Katapult] Found DETAILS button #${detailsCount}:`, { text, ariaLabel, className, id });
+          
+          // Remove any existing click handlers first
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode?.replaceChild(newBtn, btn);
+          newBtn.dataset.katapultHandled = 'true';
+          
+          newBtn.addEventListener('click', (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('[Katapult] DETAILS button clicked via interceptor');
+            handleDetailsClick(e);
+            return false;
+          }, true);
+        }
+      });
+      
+      if (buyCount > 0 || detailsCount > 0) {
+        console.log(`[Katapult] ✓ Attached handlers: ${buyCount} BUY buttons, ${detailsCount} DETAILS buttons`);
+      } else {
+        console.log('[Katapult] ⚠ No BUY or DETAILS buttons found yet. The visualizer may still be loading.');
+      }
+    };
+
+    // Use event delegation at document level to catch clicks
+    // This will work even if buttons are in iframes (if same-origin) or shadow DOM
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      
+      const text = (target.textContent || target.innerText || '').toUpperCase().trim();
+      const ariaLabel = (target.getAttribute('aria-label') || '').toUpperCase();
+      const className = (target.className || '').toUpperCase();
+      const id = (target.id || '').toUpperCase();
+      const tagName = target.tagName?.toUpperCase();
+      
+      // Check if clicked element or its parent is a BUY button
+      const isBuyButton = (
+        (text === 'BUY' || text.includes('BUY')) ||
+        ariaLabel.includes('BUY') ||
+        className.includes('BUY') ||
+        id.includes('BUY') ||
+        (tagName === 'BUTTON' && text.includes('BUY'))
+      );
+      
+      // Check if clicked element or its parent is a DETAILS button
+      const isDetailsButton = (
+        (text === 'DETAILS' || text.includes('DETAILS')) ||
+        ariaLabel.includes('DETAILS') ||
+        ariaLabel.includes('DETAIL') ||
+        className.includes('DETAILS') ||
+        className.includes('DETAIL') ||
+        id.includes('DETAILS') ||
+        id.includes('DETAIL') ||
+        (tagName === 'BUTTON' && (text.includes('DETAILS') || text.includes('DETAIL')))
+      );
+      
+      if (isBuyButton && !target.dataset.katapultHandled) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('[Katapult] BUY button clicked via document delegation:', { text, ariaLabel, className, id });
+        handleBuyClick(e);
+        return false;
+      }
+      
+      if (isDetailsButton && !target.dataset.katapultHandled) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('[Katapult] DETAILS button clicked via document delegation:', { text, ariaLabel, className, id });
+        handleDetailsClick(e);
+        return false;
+      }
+    };
+    
+    // Add document-level click listener with capture phase
+    document.addEventListener('click', handleDocumentClick, true);
+
+    // Use MutationObserver to watch for dynamically added buttons
+    // Watch both the container and the entire document
+    const containerObserver = new MutationObserver(() => {
+      attachHandlers();
+    });
+
+    const documentObserver = new MutationObserver(() => {
+      attachHandlers();
+    });
+
+    containerObserver.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: false,
+    });
+
+    documentObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: false,
+    });
+
+    // Also check immediately and periodically with longer delays
+    // Autosync buttons might load after the visualizer initializes
+    attachHandlers();
+    setTimeout(attachHandlers, 500);
+    setTimeout(attachHandlers, 1000);
+    setTimeout(attachHandlers, 2000);
+    setTimeout(attachHandlers, 3000);
+    setTimeout(attachHandlers, 5000);
+    setTimeout(attachHandlers, 7000);
+    setTimeout(attachHandlers, 10000);
+  }, [handleBuyClick, handleDetailsClick]);
 
   // In case the script is already cached and available quickly:
   useEffect(() => {
