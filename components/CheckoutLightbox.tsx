@@ -397,7 +397,7 @@ export default function CheckoutLightbox({
                     Ready to Checkout?
                   </h3>
                   <p className="text-white/70">
-                    Review your items on the left. When you're ready, proceed to
+                    Review your items on the left. When you&apos;re ready, proceed to
                     secure checkout.
                   </p>
                 </div>
@@ -769,7 +769,7 @@ export default function CheckoutLightbox({
                 </div>
                 <p className="text-center text-xs text-white/60 mt-4">
                   Your information is encrypted and secure. By continuing, you
-                  agree to Katapult's Terms of Service.
+                  agree to Katapult&apos;s Terms of Service.
                 </p>
               </div>
             )}

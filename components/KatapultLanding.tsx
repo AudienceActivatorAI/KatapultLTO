@@ -839,7 +839,7 @@ export default function KatapultLanding() {
             </button>
             
             <h2 className="text-2xl font-bold text-katapult-dark-blue mb-2">Choose Payment Method</h2>
-            <p className="text-gray-600 mb-6 text-sm">Select how you'd like to pay for your purchase</p>
+            <p className="text-gray-600 mb-6 text-sm">Select how you&apos;d like to pay for your purchase</p>
             
             <div className="space-y-3">
               {/* LendPro Financing Option */}
