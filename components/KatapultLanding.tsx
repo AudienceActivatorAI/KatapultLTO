@@ -325,16 +325,24 @@ export default function KatapultLanding() {
       {/* Sticky Header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-katapult-dark-blue/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-          <div className="font-extrabold tracking-tight">Your Shop Name</div>
+          <div className="flex items-center">
+            <img 
+              src="/katapult-logo.svg" 
+              alt="Katapult" 
+              className="h-8 w-auto"
+            />
+          </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2">
-              <div className="text-sm font-bold text-katapult-pink">
-                Katapult
-              </div>
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2">
               <span className="text-xs font-semibold text-white/80">
-                Lease-to-Own
+                Powered by
               </span>
+              <img 
+                src="/katapult-logo.svg" 
+                alt="Katapult" 
+                className="h-4 w-auto"
+              />
             </div>
           </div>
         </div>
